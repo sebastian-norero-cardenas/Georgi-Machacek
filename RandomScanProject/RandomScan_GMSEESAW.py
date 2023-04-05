@@ -298,9 +298,9 @@ pbar = tqdm(total=N, desc='COMPATIBLE POINTS FOUND', unit='points')
 
 while n < N:
 
-    ################################
-    # INITIAL SET OF RANDOM VALUES #
-    ################################
+    ###########################################
+    # GENERATING INITIAL SET OF RANDOM VALUES #
+    ###########################################
 
     # RANDOM INDEPENDENT PARAMETERS
     log_vDelta, vDelta = rnd_log_possitive(vDelta_min, vDelta_max)
@@ -383,7 +383,8 @@ while n < N:
     YdD = Yd_DIAG_MATRIX(vDelta)  # diagonal charged down quark yukawa matrix
 
     
-    # ALL THE MINIMA
+    # ALL POSSIBLE MINIMA (ANALYTICAL ONES)
+    # REAL EECTROWEAK MINIMUM
     Vmin_real = VScalarPotential(0, vp, 0, vDelta, 0, 0, vDelta, vDelta, M1, M2, lam2, lam3, lam4, lam5)
 
     # IN THE CP-EVEN SUBSPACE
@@ -424,9 +425,10 @@ while n < N:
     # IN THE DOUBLY-CHARGED SUBSPACE
     Vmin_Vppmm = Vppmm(vDelta, M1, M2, lam2, lam3, lam4, lam5)
 
-    ###############
-    # CONSTRAINTS #
-    ###############
+
+    ################################
+    # IMPOSING ALL THE CONSTRAINTS #
+    ################################
 
     # EXCLUDING NON-ZERO DIVISION
     if tH > 0.0:
@@ -543,29 +545,78 @@ while n < N:
     # AVOIDING WRONG MINIMA
     # Ref.: https://arxiv.org/abs/2207.00142
     
-    if Vmin_real < Vmin_V0p1p and Vmin_real < Vmin_V0p1m and Vmin_real < Vmin_V0p2p and Vmin_real < Vmin_V0p2m and Vmin_real < Vmin_V0p3p and Vmin_real < Vmin_V0p3m and Vmin_real < Vmin_V0p4 and Vmin_real < Vmin_V0p5p and Vmin_real < Vmin_V0p5m and Vmin_real < Vmin_V0p6p and Vmin_real < Vmin_V0p6m and Vmin_real < Vmin_V0p7p and Vmin_real < Vmin_V0p7m and Vmin_real < Vmin_V0p8p and Vmin_real < Vmin_V0p8m:
-        pass
-    else:
-        continue
-
-
-    if Vmin_real < Vmin_V0m1p and Vmin_real < Vmin_V0m1m and Vmin_real < Vmin_V0m2p and Vmin_real < Vmin_V0m2m and Vmin_real < Vmin_V0m3:
-        pass
-    else:
-        continue
-
-
-    # if Vmin_real < Vmin_Vpm1p and Vmin_real < Vmin_Vpm1m and Vmin_real < Vmin_Vpm2p and Vmin_real < Vmin_Vpm2m and Vmin_real < Vmin_Vpm3p and Vmin_real < Vmin_Vpm3m and Vmin_real < Vmin_Vpm4 and Vmin_real < Vmin_Vpm5 and Vmin_real < Vmin_Vpm6:
+    # IN THE CP-EVEN SUBSPACE
+    # if (Vmin_real < Vmin_V0p1p
+    #     and Vmin_real < Vmin_V0p1m
+    #     and Vmin_real < Vmin_V0p2p
+    #     and Vmin_real < Vmin_V0p2m
+    #     and Vmin_real < Vmin_V0p3p
+    #     and Vmin_real < Vmin_V0p3m
+    #     and Vmin_real < Vmin_V0p4
+    #     and Vmin_real < Vmin_V0p5p
+    #     and Vmin_real < Vmin_V0p5m
+    #     and Vmin_real < Vmin_V0p6p
+    #     and Vmin_real < Vmin_V0p6m
+    #     and Vmin_real < Vmin_V0p7p
+    #     and Vmin_real < Vmin_V0p7m
+    #     and Vmin_real < Vmin_V0p8p
+    #     and Vmin_real < Vmin_V0p8m
+    #     ):
     #     pass
     # else:
     #     continue
 
+    # # IN THE CP-ODD SUBSPACE
+    # if (Vmin_real < Vmin_V0m1p
+    #     and Vmin_real < Vmin_V0m1m
+    #     and Vmin_real < Vmin_V0m2p
+    #     and Vmin_real < Vmin_V0m2m
+    #     and Vmin_real < Vmin_V0m3
+    #     ):
+    #     pass
+    # else:
+    #     continue
 
-    if Vmin_real < Vmin_Vppmm:
-        pass
-    else:
-        continue
+    # # IN THE SINGLY-CHARGED SUBSPACE
+    # if (
+    #     # Vmin_real < Vmin_Vpm1p
+    #     # and Vmin_real < Vmin_Vpm1m
+    #     Vmin_real < Vmin_Vpm2p
+    #     and Vmin_real < Vmin_Vpm2m
+    #     and Vmin_real < Vmin_Vpm3p
+    #     and Vmin_real < Vmin_Vpm3m
+    #     and Vmin_real < Vmin_Vpm4
+    #     and Vmin_real < Vmin_Vpm5
+    #     and Vmin_real < Vmin_Vpm6
+    #     ):
+    #     pass
+    # else:
+    #     continue
+
+    # # IN THE DOUBLY-CHARGED SUBSPACE
+    # if Vmin_real < Vmin_Vppmm:
+    #     pass
+    # else:
+    #     continue
+
+    """HERE IS ANOTHER WAY TO AVOID THE WRONG MINIMA"""
+
+    Vmin_real_new = minimize_potential(np.arccos(1/np.sqrt(3)), vDelta, M1, M2, lam2, lam3, lam4, lam5)
     
+    minima_bol = []  # To be a good point, all the entries of the list must be False
+
+    for theta in np.linspace(0, 2*np.pi, 120):
+        result = minimize_potential(theta, vDelta, M1, M2, lam2, lam3, lam4, lam5)
+        minima_bol.append(Vmin_real_new > result)
+    
+    if any(minima_bol):  # If there is at least an instance for which Vmin_real > result.fun, then the point must be discarded
+        continue        
+    else:
+        pass
+
+
+
+
 
     # NEUTRINO CONSTRAINTS
 

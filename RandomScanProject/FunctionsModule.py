@@ -22,6 +22,7 @@ import numpy as np
 import math
 import cmath
 import random as rd
+from scipy.optimize import minimize
 
 from ConstantsModule import *
 
@@ -403,9 +404,11 @@ def SU2Generators3x3(n):
 
 
 # SIMILARITY TRANSFORMATION
-U = (1 / np.sqrt(2)) * np.array([[-1, 0, 1], [-1j, 0, -1j], [0, np.sqrt(2), 0]])
-UDagger = np.conjugate(np.transpose(U))
+P = (1 / np.sqrt(2)) * np.array([[-1, 1j, 0], [0, 0, np.sqrt(2)], [1, 1j, 0]])
+PDagger = np.conjugate(np.transpose(P))
 
+
+# BI-DOUBLET AND BI-TRIPLET
 def PhiBiDoublet(phip, phi0):
     return np.array([[np.conjugate(phi0), phip],
                     [-np.conjugate(phip), phi0]])
@@ -417,6 +420,7 @@ def DeltaBiTriplet(xip, xi0, chipp, chip, chi0):
                     [np.conjugate(chipp), -np.conjugate(xip), chi0]])
 
 
+# SCALAR GM POTENTIAL
 def VScalarPotential(phip, phi0, xip, xi0, chipp, chip, chi0, vDelta, M1, M2, lam2, lam3, lam4, lam5):
     mu2Phi = musquarePhi(vDelta, M1, M2, lam2, lam3, lam4, lam5)
     mu2Delta = musquareDelta(vDelta, M1, M2, lam2, lam3, lam4, lam5)
@@ -434,8 +438,8 @@ def VScalarPotential(phip, phi0, xip, xi0, chipp, chip, chi0, vDelta, M1, M2, la
     V5 = lam3 * np.trace(np.dot(np.dot(DeltaDagger, Delta), np.dot(DeltaDagger, Delta)))
     V6 = lam2 * np.trace(np.dot(PhiDagger, Phi)) * np.trace(np.dot(DeltaDagger, Delta))
     V7 = -lam5 * sum([np.trace(np.dot(PhiDagger, np.dot(SU2Generators2x2(a), np.dot(Phi, SU2Generators2x2(b))))) * np.trace(np.dot(DeltaDagger, np.dot(SU2Generators3x3(a), np.dot(Delta, SU2Generators3x3(b))))) for a in range(3) for b in range(3)])
-    V8 = -M1 * sum([np.trace(np.dot(PhiDagger, np.dot(SU2Generators2x2(a), np.dot(Phi, SU2Generators2x2(b))))) * (np.dot(U, np.dot(Delta, UDagger))[a, b]) for a in range(3) for b in range(3)])
-    V9 = -M2 * sum([np.trace(np.dot(DeltaDagger, np.dot(SU2Generators3x3(a), np.dot(Delta, SU2Generators3x3(b))))) * (np.dot(U, np.dot(Delta, UDagger))[a, b]) for a in range(3) for b in range(3)])
+    V8 = -M1 * sum([np.trace(np.dot(PhiDagger, np.dot(SU2Generators2x2(a), np.dot(Phi, SU2Generators2x2(b))))) * (np.dot(PDagger, np.dot(Delta, P))[a, b]) for a in range(3) for b in range(3)])
+    V9 = -M2 * sum([np.trace(np.dot(DeltaDagger, np.dot(SU2Generators3x3(a), np.dot(Delta, SU2Generators3x3(b))))) * (np.dot(PDagger, np.dot(Delta, P))[a, b]) for a in range(3) for b in range(3)])
 
     return V1 + V2 + V3 + V4 + V5 + V6 + V7 + V8 + V9
 
@@ -480,7 +484,7 @@ def V0p3m(vDelta, M1, M2, lam2, lam3, lam4, lam5):
 
 def V0p4(vDelta, M1, M2, lam2, lam3, lam4, lam5):
     mu2Delta = musquareDelta(vDelta, M1, M2, lam2, lam3, lam4, lam5)
-    return VScalarPotential(0, 0, 0, - (3 * M2) / (2 * lam3), 0, 0, (1 / lam3) * cmath.sqrt((-mu2Delta * lam3 ** 2 - 9 * M2 ** 2 * lam3 - 9 * M2 * lam4) / (2 * lam3 + 4 * lam4)), vDelta, M1, M2, lam2, lam3, lam4, lam5)
+    return VScalarPotential(0, 0, 0, - (3 * M2) / (2 * lam3), 0, 0, (1 / lam3) * cmath.sqrt((-mu2Delta * lam3 ** 2 - 9 * M2 ** 2 * lam3 - 9 * M2 ** 2* lam4) / (2 * lam3 + 4 * lam4)), vDelta, M1, M2, lam2, lam3, lam4, lam5)
 
 
 def V0p5p(vDelta, M1, M2, lam2, lam3, lam4, lam5):
@@ -538,19 +542,19 @@ def V0m1m(vDelta, M1, M2, lam2, lam3, lam4, lam5):
 
 def V0m2p(vDelta, M1, M2, lam2, lam3, lam4, lam5):
     mu2Delta = musquareDelta(vDelta, M1, M2, lam2, lam3, lam4, lam5)
-    return VScalarPotential(0, 0, 0, 0, 0, +1j * cmath.sqrt(-2 * mu2Delta * (2 * lam4 + lam3)) / (2 * (2 * lam4 + lam3)), 0, vDelta, M1, M2, lam2, lam3, lam4, lam5)
+    return VScalarPotential(0, 0, 0, 0, 0, 0, +1j * cmath.sqrt(-2 * mu2Delta * (2 * lam4 + lam3)) / (2 * (2 * lam4 + lam3)), vDelta, M1, M2, lam2, lam3, lam4, lam5)
 
 
 def V0m2m(vDelta, M1, M2, lam2, lam3, lam4, lam5):
     mu2Delta = musquareDelta(vDelta, M1, M2, lam2, lam3, lam4, lam5)
-    return VScalarPotential(0, 0, 0, 0, 0, -1j * cmath.sqrt(-2 * mu2Delta * (2 * lam4 + lam3)) / (2 * (2 * lam4 + lam3)), 0, vDelta, M1, M2, lam2, lam3, lam4, lam5)
+    return VScalarPotential(0, 0, 0, 0, 0, 0, -1j * cmath.sqrt(-2 * mu2Delta * (2 * lam4 + lam3)) / (2 * (2 * lam4 + lam3)), vDelta, M1, M2, lam2, lam3, lam4, lam5)
 
 
 def V0m3(vDelta, M1, M2, lam2, lam3, lam4, lam5):
     mu2Phi = musquarePhi(vDelta, M1, M2, lam2, lam3, lam4, lam5)
     mu2Delta = musquareDelta(vDelta, M1, M2, lam2, lam3, lam4, lam5)
     lam1 = lambda1(vDelta, M1, M2, lam2, lam3, lam4, lam5)
-    return VScalarPotential(0, 1j * cmath.sqrt((-8 * mu2Phi * lam3 - 16 * mu2Phi * lam4 + 8 * mu2Delta * lam2 - 2 * mu2Delta * lam5) / (32 * lam1 * lam3 + 64 * lam1 * lam4 - 16 * lam2 ** 2 + 8 * lam2 * lam5 - lam5 ** 2)), 0, 0, 0, 1j * cmath.sqrt((8 * mu2Phi * lam2 - 2 * mu2Phi * lam5 - 16 * mu2Delta * lam1) / (32 * lam1 * lam3 + 64 * lam1 * lam4 - 16 * lam2 ** 2 + 8 * lam2 * lam5 - lam5 ** 2)), 0, vDelta, M1, M2, lam2, lam3, lam4, lam5)
+    return VScalarPotential(0, 1j * cmath.sqrt((-8 * mu2Phi * lam3 - 16 * mu2Phi * lam4 + 8 * mu2Delta * lam2 - 2 * mu2Delta * lam5) / (32 * lam1 * lam3 + 64 * lam1 * lam4 - 16 * lam2 ** 2 + 8 * lam2 * lam5 - lam5 ** 2)), 0, 0, 0, 0, 1j * cmath.sqrt((8 * mu2Phi * lam2 - 2 * mu2Phi * lam5 - 16 * mu2Delta * lam1) / (32 * lam1 * lam3 + 64 * lam1 * lam4 - 16 * lam2 ** 2 + 8 * lam2 * lam5 - lam5 ** 2)), vDelta, M1, M2, lam2, lam3, lam4, lam5)
 
 
 # IN THE SINGLY-CHARGED SUBSPACE
@@ -583,7 +587,7 @@ def Vpm3p(vDelta, M1, M2, lam2, lam3, lam4, lam5):
 
 def Vpm3m(vDelta, M1, M2, lam2, lam3, lam4, lam5):
     mu2Delta = musquareDelta(vDelta, M1, M2, lam2, lam3, lam4, lam5)
-    return VScalarPotential(0, 0, +cmath.sqrt(-2 * mu2Delta * (lam4 + lam3)) / (4 * (lam4 + lam3)), 0, 0, 0, 0, vDelta, M1, M2, lam2, lam3, lam4, lam5)
+    return VScalarPotential(0, 0, -cmath.sqrt(-2 * mu2Delta * (lam4 + lam3)) / (4 * (lam4 + lam3)), 0, 0, 0, 0, vDelta, M1, M2, lam2, lam3, lam4, lam5)
 
 
 def Vpm4(vDelta, M1, M2, lam2, lam3, lam4, lam5):
@@ -611,6 +615,37 @@ def Vppmm(vDelta, M1, M2, lam2, lam3, lam4, lam5):
     return VScalarPotential(0, 0, 0, 0, cmath.sqrt(-mu2Phi * (2 * lam4 + lam3)) / (2 * (2 * lam4 + lam3)), 0, 0, vDelta, M1, M2, lam2, lam3, lam4, lam5)
 
 
+"""Here is another way to find the wrong minima"""
+def zeta_aux(theta):
+    return (1/2) * np.sin(theta) ** 4 + np.cos(theta) ** 4
 
 
+def omega_aux(theta):
+    return (1/4) * np.sin(theta) ** 2 + (1/np.sqrt(2)) * np.sin(theta) * np.cos(theta)
 
+
+def sigma_aux(theta):
+    return (1/(2 * np.sqrt(2))) * np.sin(theta) + (1/4) * np.cos(theta)
+
+
+def rho_aux(theta):
+    return 3 * np.sin(theta) ** 2 * np.cos(theta)
+
+
+def VScalarPotentialAuxVar(r, tanG, theta, vDelta, M1, M2, lam2, lam3, lam4, lam5):
+    zeta = zeta_aux(theta)
+    omega = omega_aux(theta)
+    sigma = sigma_aux(theta)
+    rho = rho_aux(theta)
+    lam1 = lambda1(vDelta, M1, M2, lam2, lam3, lam4, lam5)
+    mu2Phi = musquarePhi(vDelta, M1, M2, lam2, lam3, lam4, lam5)
+    mu2Delta = musquareDelta(vDelta, M1, M2, lam2, lam3, lam4, lam5)
+    return (r ** 2 / (1 + tanG ** 2)) * (1/2) * (mu2Phi + mu2Delta * tanG ** 2) + (r ** 4 / (1 + tanG ** 2)) ** 2 * (lam1 + (lam2 - omega * lam5) * tanG ** 2 + (zeta * lam3 + lam4) * tanG ** 4) + (r ** 3 / (1 + tanG ** 2)) ** (3/2) * tanG * (-sigma * M1 - rho * M2 * tanG ** 2)
+
+
+def minimize_potential(theta, vDelta, M1, M2, lam2, lam3, lam4, lam5):
+    initial_guess = [5, 0.5]  # Define the initial guess for the minimum
+    bounds = [(0, 1e+03), (0, 1e+03)]  # Define the bounds for the variables
+    fun = lambda x: VScalarPotentialAuxVar(x[0], x[1], theta, vDelta, M1, M2, lam2, lam3, lam4, lam5)
+    result = minimize(fun, initial_guess, bounds=bounds)  # Use the minimize function to find the global minimum
+    return result.fun
